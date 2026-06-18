@@ -94,7 +94,7 @@ def load_tables():
           title_contender_tier
         FROM gold_power_rankings
         ORDER BY world_rank
-        LIMIT 15
+        
     """)
 
     top_scorers = query_table("""
@@ -104,7 +104,7 @@ def load_tables():
           goals
         FROM gold_top_scorers
         ORDER BY goals DESC, player ASC
-        LIMIT 15
+        
     """)
 
     stadiums = query_table("""
@@ -115,7 +115,7 @@ def load_tables():
           matches_hosted
         FROM gold_stadium_match_load
         ORDER BY matches_hosted DESC
-        LIMIT 15
+        
     """)
 
     group_difficulty = query_table("""
@@ -139,7 +139,7 @@ def load_tables():
           ai_match_analysis
         FROM gold_ai_match_analysis
         ORDER BY confidence_score DESC
-        LIMIT 20
+        
     """)
 
     return {
