@@ -30,7 +30,7 @@ _cache_lock = threading.Lock()
 
 # ---------- Databricks helpers ----------
 def get_workspace_url():
-    workspace_url = os.getenv("DATABRICKS_HOST")
+    workspace_url = "https://dbc-31524534-7920.cloud.databricks.com"
 
     if not workspace_url:
         raise Exception("DATABRICKS_HOST environment variable not found.")
@@ -42,7 +42,7 @@ def get_workspace_url():
 
 
 def get_token():
-    token = os.getenv("DATABRICKS_TOKEN")
+    token = "dapi1572ae641ad2e6f3e459a3023881318f"
 
     if not token:
         raise Exception("DATABRICKS_TOKEN environment variable not found.")
