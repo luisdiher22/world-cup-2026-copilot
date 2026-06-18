@@ -2,7 +2,7 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
-from databricks import sql
+
 
 st.set_page_config(
     page_title="World Cup 2026 Intelligence",
@@ -82,14 +82,38 @@ question = st.sidebar.text_area(
 )
 
 def query_table(query):
-    with sql.connect(
-        server_hostname=server_hostname,
-        http_path=http_path,
-        access_token=access_token
-    ) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            return cursor.fetchall_arrow().to_pandas()
+    workspace_url = os.getenv("DATABRICKS_HOST")
+    token = os.getenv("DATABRICKS_TOKEN")
+    warehouse_id = "fc03329efedbeaa3"
+
+    response = requests.post(
+        f"{workspace_url}/api/2.0/sql/statements",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "warehouse_id": warehouse_id,
+            "statement": query,
+            "wait_timeout": "30s",
+            "on_wait_timeout": "CONTINUE"
+        },
+        timeout=40
+    )
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    result = response.json()
+
+    if result["status"]["state"] != "SUCCEEDED":
+        raise Exception(result)
+
+    columns = [
+        col["name"]
+        for col in result["manifest"]["schema"]["columns"]
+    ]
+
+    rows = result["result"]["data_array"]
+
+    return pd.DataFrame(rows, columns=columns)
 
 @st.cache_data(ttl=300)
 def load_context_tables(http_path):
@@ -144,13 +168,11 @@ def ask_llm(prompt):
     return response.json()["choices"][0]["message"]["content"]
 
 try:
-    st.write("Testing SQL connection...")
+    st.write("Testing SQL Statement API...")
 
-    test_df = query_table("""
-        SELECT 1 AS test_value
-    """)
+    test_df = query_table("SELECT 1 AS test_value")
 
-    st.success("SQL connection works!")
+    st.success("SQL Statement API works!")
     st.dataframe(test_df)
 
 except Exception as e:
