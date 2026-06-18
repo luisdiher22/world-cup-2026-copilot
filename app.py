@@ -2,8 +2,6 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
-from databricks import sql
-from databricks.sdk.core import Config, oauth_service_principal
 
 st.set_page_config(
     page_title="World Cup 2026 Intelligence",
@@ -11,99 +9,100 @@ st.set_page_config(
     layout="wide"
 )
 
+WAREHOUSE_ID = "fc03329efedbeaa3"
+ENDPOINT_NAME = "databricks-meta-llama-3-3-70b-instruct"
+
+
+# ---------- Styling ----------
 st.markdown("""
 <style>
-.main {
-    background-color: #0B0F19;
-}
 .block-container {
     padding-top: 2rem;
-    padding-bottom: 2rem;
     max-width: 1300px;
 }
+
 .hero {
     padding: 32px;
     border-radius: 24px;
-    background: linear-gradient(135deg, #111827 0%, #1F2937 50%, #064E3B 100%);
+    background: linear-gradient(135deg, #111827, #064E3B);
     border: 1px solid rgba(255,255,255,0.12);
-    margin-bottom: 28px;
+    margin-bottom: 25px;
 }
+
 .hero h1 {
-    font-size: 52px;
-    margin-bottom: 8px;
+    font-size: 48px;
+    margin-bottom: 6px;
 }
+
 .hero p {
-    font-size: 18px;
     color: #D1D5DB;
+    font-size: 18px;
 }
-.card {
-    padding: 22px;
-    border-radius: 20px;
+
+.metric-card {
+    padding: 20px;
+    border-radius: 18px;
     background-color: #111827;
-    border: 1px solid rgba(255,255,255,0.10);
-    margin-bottom: 18px;
+    border: 1px solid rgba(255,255,255,0.12);
 }
-.metric-title {
+
+.metric-label {
     color: #9CA3AF;
     font-size: 14px;
 }
+
 .metric-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 800;
 }
+
 .answer-box {
-    padding: 24px;
-    border-radius: 20px;
+    padding: 22px;
+    border-radius: 18px;
     background-color: #0F172A;
     border: 1px solid rgba(34,197,94,0.45);
-    font-size: 17px;
     line-height: 1.6;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="hero">
-  <h1>⚽ World Cup 2026 Intelligence Copilot</h1>
-  <p>Databricks Lakehouse + Gold Tables + Llama 3.3 70B</p>
-</div>
-""", unsafe_allow_html=True)
 
-server_hostname = os.getenv("DATABRICKS_HOST", "").replace("https://", "")
-access_token = os.getenv("DATABRICKS_TOKEN")
+# ---------- Helpers ----------
+def get_workspace_url():
+    workspace_url = os.getenv("DATABRICKS_HOST")
 
-http_path = st.sidebar.text_input(
-    "SQL Warehouse HTTP Path",
-    value="/sql/1.0/warehouses/fc03329efedbeaa3"
-)
+    if not workspace_url:
+        raise Exception("DATABRICKS_HOST environment variable not found.")
 
-question = st.sidebar.text_area(
-    "Ask the World Cup",
-    "Who are the favorites to win the World Cup?"
-)
+    if not workspace_url.startswith("http"):
+        workspace_url = "https://" + workspace_url
 
-cfg = Config()
+    return workspace_url
+
+
+def get_token():
+    token = os.getenv("DATABRICKS_TOKEN")
+
+    if not token:
+        raise Exception("DATABRICKS_TOKEN environment variable not found.")
+
+    return token
+
 
 def query_table(query):
-    with sql.connect(
-        server_hostname=cfg.host.replace("https://", ""),
-        http_path="/sql/1.0/warehouses/fc03329efedbeaa3",
-        credentials_provider=lambda: oauth_service_principal(cfg)
-    ) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            return cursor.fetchall_arrow().to_pandas()
+    workspace_url = get_workspace_url()
+    token = get_token()
 
     response = requests.post(
         f"{workspace_url}/api/2.0/sql/statements",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "warehouse_id": warehouse_id,
+            "warehouse_id": WAREHOUSE_ID,
             "statement": query,
             "wait_timeout": "30s",
             "on_wait_timeout": "CONTINUE"
         },
-        timeout=40
+        timeout=45
     )
 
     if response.status_code != 200:
@@ -115,55 +114,28 @@ def query_table(query):
         raise Exception(result)
 
     columns = [
-        col["name"]
-        for col in result["manifest"]["schema"]["columns"]
+        c["name"]
+        for c in result["manifest"]["schema"]["columns"]
     ]
 
     rows = result["result"]["data_array"]
 
     return pd.DataFrame(rows, columns=columns)
 
-@st.cache_data(ttl=300)
-def load_context_tables(http_path):
-    power_rankings = query_table("""
-        SELECT world_rank, team, group_name, ROUND(team_strength, 2) AS team_strength, title_contender_tier
-        FROM gold_power_rankings
-        ORDER BY world_rank
-        LIMIT 10
-    """)
-
-    top_scorers = query_table("""
-        SELECT player, team, goals
-        FROM gold_top_scorers
-        ORDER BY goals DESC
-        LIMIT 10
-    """)
-
-    stadiums = query_table("""
-        SELECT stadium_name, city, country, matches_hosted
-        FROM gold_stadium_match_load
-        ORDER BY matches_hosted DESC
-        LIMIT 10
-    """)
-
-    groups = query_table("""
-        SELECT group_name, avg_group_strength, strongest_team_score
-        FROM gold_group_difficulty
-        ORDER BY avg_group_strength DESC
-    """)
-
-    return power_rankings, top_scorers, stadiums, groups
 
 def ask_llm(prompt):
-    workspace_url = os.getenv("DATABRICKS_HOST")
-    token = os.getenv("DATABRICKS_TOKEN")
+    workspace_url = get_workspace_url()
+    token = get_token()
 
     response = requests.post(
-        f"{workspace_url}/serving-endpoints/databricks-meta-llama-3-3-70b-instruct/invocations",
+        f"{workspace_url}/serving-endpoints/{ENDPOINT_NAME}/invocations",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "messages": [
-                {"role": "user", "content": prompt}
+                {
+                    "role": "user",
+                    "content": prompt
+                }
             ],
             "max_tokens": 900
         },
@@ -175,14 +147,197 @@ def ask_llm(prompt):
 
     return response.json()["choices"][0]["message"]["content"]
 
+
+@st.cache_data(ttl=300)
+def load_tables():
+    power_rankings = query_table("""
+        SELECT
+          world_rank,
+          team,
+          group_name,
+          ROUND(team_strength, 2) AS team_strength,
+          title_contender_tier
+        FROM gold_power_rankings
+        ORDER BY world_rank
+        LIMIT 15
+    """)
+
+    top_scorers = query_table("""
+        SELECT
+          player,
+          team,
+          goals
+        FROM gold_top_scorers
+        ORDER BY goals DESC, player ASC
+        LIMIT 15
+    """)
+
+    stadiums = query_table("""
+        SELECT
+          stadium_name,
+          city,
+          country,
+          matches_hosted
+        FROM gold_stadium_match_load
+        ORDER BY matches_hosted DESC
+        LIMIT 15
+    """)
+
+    group_difficulty = query_table("""
+        SELECT
+          group_name,
+          avg_group_strength,
+          strongest_team_score
+        FROM gold_group_difficulty
+        ORDER BY avg_group_strength DESC
+    """)
+
+    predictions = query_table("""
+        SELECT
+          local_date,
+          group_name,
+          home_team,
+          away_team,
+          predicted_result,
+          ROUND(confidence_score, 2) AS confidence_score,
+          insight_type,
+          ai_match_analysis
+        FROM gold_ai_match_analysis
+        ORDER BY confidence_score DESC
+        LIMIT 20
+    """)
+
+    return power_rankings, top_scorers, stadiums, group_difficulty, predictions
+
+
+# ---------- UI ----------
+st.markdown("""
+<div class="hero">
+  <h1>⚽ World Cup 2026 Intelligence Copilot</h1>
+  <p>Built with Databricks Lakehouse, Gold Tables, MLflow-style predictions, and Llama 3.3 70B.</p>
+</div>
+""", unsafe_allow_html=True)
+
 try:
-    st.write("Testing SQL Statement API...")
+    power_rankings, top_scorers, stadiums, group_difficulty, predictions = load_tables()
 
-    test_df = query_table("SELECT 1 AS test_value")
+    # ---------- Metrics ----------
+    col1, col2, col3, col4 = st.columns(4)
 
-    st.success("SQL Statement API works!")
-    st.dataframe(test_df)
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-label">Top Favorite</div>
+          <div class="metric-value">{power_rankings.iloc[0]["team"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-label">Golden Boot Leader</div>
+          <div class="metric-value">{top_scorers.iloc[0]["player"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-label">Most Used Stadium</div>
+          <div class="metric-value">{stadiums.iloc[0]["stadium_name"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-label">Hardest Group</div>
+          <div class="metric-value">Group {group_difficulty.iloc[0]["group_name"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # ---------- Copilot ----------
+    st.subheader("🤖 Ask the World Cup Copilot")
+
+    question = st.text_area(
+        "Ask a question",
+        "Who are the favorites to win the World Cup and why?"
+    )
+
+    if st.button("Ask Copilot", use_container_width=True):
+        context = f"""
+POWER RANKINGS:
+{power_rankings.to_string(index=False)}
+
+TOP SCORERS:
+{top_scorers.to_string(index=False)}
+
+STADIUM MATCH LOAD:
+{stadiums.to_string(index=False)}
+
+GROUP DIFFICULTY:
+{group_difficulty.to_string(index=False)}
+
+MATCH PREDICTIONS:
+{predictions.to_string(index=False)}
+"""
+
+        prompt = f"""
+You are a FIFA World Cup 2026 analytics assistant.
+
+Use ONLY the supplied Databricks table context.
+Do not invent facts.
+If the data does not contain enough information, say that clearly.
+
+CONTEXT:
+{context}
+
+QUESTION:
+{question}
+
+Answer clearly, analytically, and concisely.
+"""
+
+        with st.spinner("Analyzing World Cup data..."):
+            answer = ask_llm(prompt)
+
+        st.markdown("### Copilot Answer")
+        st.markdown(f"""
+        <div class="answer-box">
+        {answer}
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # ---------- Tables ----------
+    st.subheader("📊 Tournament Intelligence")
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Power Rankings",
+        "Golden Boot",
+        "Stadiums",
+        "Group Difficulty",
+        "Predictions"
+    ])
+
+    with tab1:
+        st.dataframe(power_rankings, use_container_width=True, hide_index=True)
+
+    with tab2:
+        st.dataframe(top_scorers, use_container_width=True, hide_index=True)
+
+    with tab3:
+        st.dataframe(stadiums, use_container_width=True, hide_index=True)
+
+    with tab4:
+        st.dataframe(group_difficulty, use_container_width=True, hide_index=True)
+
+    with tab5:
+        st.dataframe(predictions, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error("SQL test failed.")
+    st.error("Something failed.")
     st.code(str(e))
