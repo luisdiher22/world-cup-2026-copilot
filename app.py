@@ -87,7 +87,7 @@ def query_table(query):
     warehouse_id = "fc03329efedbeaa3"
     
     if not workspace_url.startswith("http"):
-    workspace_url = "https://" + workspace_url
+        workspace_url = "https://" + workspace_url
     
 
     response = requests.post(
