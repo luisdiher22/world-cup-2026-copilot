@@ -13,7 +13,7 @@ st.title("FIFA World Cup 2026™ Copilot")
 st.caption("Powered by Databricks Lakehouse + Llama 3.3 70B")
 
 server_hostname = os.getenv("DATABRICKS_HOST")
-http_path = st.text_input("SQL Warehouse HTTP Path")
+http_path = st.text_input("/sql/1.0/warehouses/fc03329efedbeaa3")
 access_token = os.getenv("DATABRICKS_TOKEN")
 
 def query_table(query):
