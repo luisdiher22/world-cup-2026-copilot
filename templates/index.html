@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Cup 2026 Intelligence Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Expanded:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark">⚽</span>
+        <div class="brand-text">
+          <h1>World Cup 2026</h1>
+          <p>Intelligence Copilot</p>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <input
+          id="team-search"
+          type="text"
+          placeholder="Search for a team — Brazil, USA, Argentina…"
+          autocomplete="off"
+        />
+        <div id="search-results" class="search-results hidden"></div>
+      </div>
+    </header>
+
+    <div id="team-spotlight" class="team-spotlight hidden"></div>
+
+    <nav class="tab-bar" id="tab-bar">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="rankings">Power Rankings</button>
+      <button class="tab-btn" data-tab="scorers">Golden Boot</button>
+      <button class="tab-btn" data-tab="stadiums">Stadiums</button>
+      <button class="tab-btn" data-tab="groups">Group Difficulty</button>
+      <button class="tab-btn" data-tab="predictions">Predictions</button>
+      <button class="tab-btn" data-tab="chat">AI Copilot</button>
+    </nav>
+
+    <main class="tab-panels" id="tab-panels">
+      <section class="tab-panel active" id="panel-overview">
+        <div class="hero">
+          <h2>World Cup 2026 Intelligence Copilot</h2>
+          <p>Built on the Databricks Lakehouse — gold tables, AI-driven match analysis, and Llama 3.3 70B.</p>
+        </div>
+        <div class="metric-grid" id="metric-grid"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-rankings">
+        <h2>Power Rankings</h2>
+        <div class="table-wrap" id="table-rankings"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-scorers">
+        <h2>Golden Boot Race</h2>
+        <div class="table-wrap" id="table-scorers"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-stadiums">
+        <h2>Stadium Match Load</h2>
+        <div class="table-wrap" id="table-stadiums"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-groups">
+        <h2>Group Difficulty</h2>
+        <div class="table-wrap" id="table-groups"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-predictions">
+        <h2>Match Predictions</h2>
+        <div class="table-wrap" id="table-predictions"></div>
+      </section>
+
+      <section class="tab-panel" id="panel-chat">
+        <div class="chat-shell">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-bubble ai">
+              <div class="chat-bubble-label">Copilot</div>
+              <div class="chat-bubble-text">
+                Ask me anything about the tournament — favorites, predictions, stadiums, or the toughest groups.
+              </div>
+            </div>
+          </div>
+          <form class="chat-input-bar" id="chat-form">
+            <textarea
+              id="chat-input"
+              placeholder="Who are the favorites to win the World Cup and why?"
+              rows="1"
+            ></textarea>
+            <button type="submit" id="chat-send">Ask</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

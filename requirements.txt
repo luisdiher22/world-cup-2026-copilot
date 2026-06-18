@@ -1,4 +1,8 @@
-streamlit
+fastapi
+uvicorn[standard]
+jinja2
+httpx
+python-dotenv
 pandas
 requests
 databricks-sql-connector

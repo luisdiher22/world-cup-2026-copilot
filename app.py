@@ -1,73 +1,34 @@
 import os
+import json
+import time
+import threading
+
+import httpx
 import requests
 import pandas as pd
-import streamlit as st
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
-st.set_page_config(
-    page_title="World Cup 2026 Intelligence",
-    page_icon="⚽",
-    layout="wide"
-)
+load_dotenv()
 
 WAREHOUSE_ID = "fc03329efedbeaa3"
 ENDPOINT_NAME = "databricks-meta-llama-3-3-70b-instruct"
+CACHE_TTL_SECONDS = 300
+
+app = FastAPI(title="World Cup 2026 Intelligence Copilot")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+_cache = {"tables": None, "timestamp": 0.0}
+_cache_lock = threading.Lock()
 
 
-# ---------- Styling ----------
-st.markdown("""
-<style>
-.block-container {
-    padding-top: 2rem;
-    max-width: 1300px;
-}
-
-.hero {
-    padding: 32px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, #111827, #064E3B);
-    border: 1px solid rgba(255,255,255,0.12);
-    margin-bottom: 25px;
-}
-
-.hero h1 {
-    font-size: 48px;
-    margin-bottom: 6px;
-}
-
-.hero p {
-    color: #D1D5DB;
-    font-size: 18px;
-}
-
-.metric-card {
-    padding: 20px;
-    border-radius: 18px;
-    background-color: #111827;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-
-.metric-label {
-    color: #9CA3AF;
-    font-size: 14px;
-}
-
-.metric-value {
-    font-size: 28px;
-    font-weight: 800;
-}
-
-.answer-box {
-    padding: 22px;
-    border-radius: 18px;
-    background-color: #0F172A;
-    border: 1px solid rgba(34,197,94,0.45);
-    line-height: 1.6;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# ---------- Helpers ----------
+# ---------- Databricks helpers ----------
 def get_workspace_url():
     workspace_url = os.getenv("DATABRICKS_HOST")
 
@@ -123,32 +84,6 @@ def query_table(query):
     return pd.DataFrame(rows, columns=columns)
 
 
-def ask_llm(prompt):
-    workspace_url = get_workspace_url()
-    token = get_token()
-
-    response = requests.post(
-        f"{workspace_url}/serving-endpoints/{ENDPOINT_NAME}/invocations",
-        headers={"Authorization": f"Bearer {token}"},
-        json={
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 900
-        },
-        timeout=60
-    )
-
-    if response.status_code != 200:
-        raise Exception(response.text)
-
-    return response.json()["choices"][0]["message"]["content"]
-
-
-@st.cache_data(ttl=300)
 def load_tables():
     power_rankings = query_table("""
         SELECT
@@ -207,84 +142,43 @@ def load_tables():
         LIMIT 20
     """)
 
-    return power_rankings, top_scorers, stadiums, group_difficulty, predictions
+    return {
+        "power_rankings": power_rankings,
+        "top_scorers": top_scorers,
+        "stadiums": stadiums,
+        "group_difficulty": group_difficulty,
+        "predictions": predictions,
+    }
 
 
-# ---------- UI ----------
-st.markdown("""
-<div class="hero">
-  <h1>⚽ World Cup 2026 Intelligence Copilot</h1>
-  <p>Built with Databricks Lakehouse, Gold Tables, MLflow-style predictions, and Llama 3.3 70B.</p>
-</div>
-""", unsafe_allow_html=True)
+def get_cached_tables():
+    with _cache_lock:
+        is_stale = (time.time() - _cache["timestamp"]) >= CACHE_TTL_SECONDS
+        if _cache["tables"] is None or is_stale:
+            _cache["tables"] = load_tables()
+            _cache["timestamp"] = time.time()
+        return _cache["tables"]
 
-try:
-    power_rankings, top_scorers, stadiums, group_difficulty, predictions = load_tables()
 
-    # ---------- Metrics ----------
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-          <div class="metric-label">Top Favorite</div>
-          <div class="metric-value">{power_rankings.iloc[0]["team"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card">
-          <div class="metric-label">Golden Boot Leader</div>
-          <div class="metric-value">{top_scorers.iloc[0]["player"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown(f"""
-        <div class="metric-card">
-          <div class="metric-label">Most Used Stadium</div>
-          <div class="metric-value">{stadiums.iloc[0]["stadium_name"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown(f"""
-        <div class="metric-card">
-          <div class="metric-label">Hardest Group</div>
-          <div class="metric-value">Group {group_difficulty.iloc[0]["group_name"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.divider()
-
-    # ---------- Copilot ----------
-    st.subheader("🤖 Ask the World Cup Copilot")
-
-    question = st.text_area(
-        "Ask a question",
-        "Who are the favorites to win the World Cup and why?"
-    )
-
-    if st.button("Ask Copilot", use_container_width=True):
-        context = f"""
+def build_prompt(tables, question):
+    context = f"""
 POWER RANKINGS:
-{power_rankings.to_string(index=False)}
+{tables["power_rankings"].to_string(index=False)}
 
 TOP SCORERS:
-{top_scorers.to_string(index=False)}
+{tables["top_scorers"].to_string(index=False)}
 
 STADIUM MATCH LOAD:
-{stadiums.to_string(index=False)}
+{tables["stadiums"].to_string(index=False)}
 
 GROUP DIFFICULTY:
-{group_difficulty.to_string(index=False)}
+{tables["group_difficulty"].to_string(index=False)}
 
 MATCH PREDICTIONS:
-{predictions.to_string(index=False)}
+{tables["predictions"].to_string(index=False)}
 """
 
-        prompt = f"""
+    return f"""
 You are a FIFA World Cup 2026 analytics assistant.
 
 Use ONLY the supplied Databricks table context.
@@ -300,44 +194,87 @@ QUESTION:
 Answer clearly, analytically, and concisely.
 """
 
-        with st.spinner("Analyzing World Cup data..."):
-            answer = ask_llm(prompt)
 
-        st.markdown("### Copilot Answer")
-        st.markdown(f"""
-        <div class="answer-box">
-        {answer}
-        </div>
-        """, unsafe_allow_html=True)
+async def stream_chat_tokens(prompt):
+    workspace_url = get_workspace_url()
+    token = get_token()
+    url = f"{workspace_url}/serving-endpoints/{ENDPOINT_NAME}/invocations"
 
-    st.divider()
+    payload = {
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 900,
+        "stream": True,
+    }
 
-    # ---------- Tables ----------
-    st.subheader("📊 Tournament Intelligence")
+    async with httpx.AsyncClient(timeout=60) as client:
+        async with client.stream(
+            "POST",
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            json=payload,
+        ) as response:
+            if response.status_code != 200:
+                body = await response.aread()
+                yield f"data: {json.dumps({'error': body.decode()})}\n\n"
+                return
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Power Rankings",
-        "Golden Boot",
-        "Stadiums",
-        "Group Difficulty",
-        "Predictions"
-    ])
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
 
-    with tab1:
-        st.dataframe(power_rankings, use_container_width=True, hide_index=True)
+                data = line[len("data:"):].strip()
+                if data == "[DONE]":
+                    break
 
-    with tab2:
-        st.dataframe(top_scorers, use_container_width=True, hide_index=True)
+                try:
+                    chunk = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
 
-    with tab3:
-        st.dataframe(stadiums, use_container_width=True, hide_index=True)
+                delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content")
+                if delta:
+                    yield f"data: {json.dumps({'token': delta})}\n\n"
 
-    with tab4:
-        st.dataframe(group_difficulty, use_container_width=True, hide_index=True)
+    yield "data: [DONE]\n\n"
 
-    with tab5:
-        st.dataframe(predictions, use_container_width=True, hide_index=True)
 
-except Exception as e:
-    st.error("Something failed.")
-    st.code(str(e))
+class ChatRequest(BaseModel):
+    question: str
+
+
+# ---------- Routes ----------
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
+
+
+@app.get("/api/data")
+def get_data():
+    try:
+        tables = get_cached_tables()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+    return {
+        key: df.to_dict(orient="records")
+        for key, df in tables.items()
+    }
+
+
+@app.post("/api/chat")
+async def chat(payload: ChatRequest):
+    try:
+        tables = get_cached_tables()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+    prompt = build_prompt(tables, payload.question)
+    return StreamingResponse(stream_chat_tokens(prompt), media_type="text/event-stream")
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=int(os.environ.get("DATABRICKS_APP_PORT", 8000)),
+    )
