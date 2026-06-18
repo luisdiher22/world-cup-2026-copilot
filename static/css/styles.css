@@ -399,6 +399,35 @@ h1, h2, h3 {
   border-color: rgba(60, 172, 59, 0.4);
 }
 
+.metric-loading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border-soft);
+  border-top-color: rgba(60, 172, 59, 0.9);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .metric-label {
   color: var(--text-secondary);
   font-size: 13px;

@@ -25,6 +25,7 @@ async function loadData() {
     renderMetrics();
     renderTables();
   } catch (err) {
+    document.getElementById("metric-grid").innerHTML = "";
     showError(err.message);
   }
 }
