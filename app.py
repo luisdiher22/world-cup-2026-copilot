@@ -85,6 +85,10 @@ def query_table(query):
     workspace_url = os.getenv("DATABRICKS_HOST")
     token = os.getenv("DATABRICKS_TOKEN")
     warehouse_id = "fc03329efedbeaa3"
+    
+    if not workspace_url.startswith("http"):
+    workspace_url = "https://" + workspace_url
+    
 
     response = requests.post(
         f"{workspace_url}/api/2.0/sql/statements",
