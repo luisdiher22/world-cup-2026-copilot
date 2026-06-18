@@ -50,13 +50,14 @@ def get_token():
     return token
 
 
-def query_table(query):
+def query_table(query, poll_timeout_seconds=180, poll_interval_seconds=2):
     workspace_url = get_workspace_url()
     token = get_token()
+    headers = {"Authorization": f"Bearer {token}"}
 
     response = requests.post(
         f"{workspace_url}/api/2.0/sql/statements",
-        headers={"Authorization": f"Bearer {token}"},
+        headers=headers,
         json={
             "warehouse_id": WAREHOUSE_ID,
             "statement": query,
@@ -70,6 +71,25 @@ def query_table(query):
         raise Exception(response.text)
 
     result = response.json()
+    statement_id = result["statement_id"]
+
+    deadline = time.time() + poll_timeout_seconds
+    while result["status"]["state"] in ("PENDING", "RUNNING"):
+        if time.time() >= deadline:
+            raise Exception(f"Statement {statement_id} timed out while warehouse was starting up")
+
+        time.sleep(poll_interval_seconds)
+
+        response = requests.get(
+            f"{workspace_url}/api/2.0/sql/statements/{statement_id}",
+            headers=headers,
+            timeout=45
+        )
+
+        if response.status_code != 200:
+            raise Exception(response.text)
+
+        result = response.json()
 
     if result["status"]["state"] != "SUCCEEDED":
         raise Exception(result)
