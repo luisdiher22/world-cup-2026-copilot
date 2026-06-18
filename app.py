@@ -144,104 +144,15 @@ def ask_llm(prompt):
     return response.json()["choices"][0]["message"]["content"]
 
 try:
-    power_rankings, top_scorers, stadiums, groups = load_context_tables(http_path)
+    st.write("Testing SQL connection...")
 
-    col1, col2, col3, col4 = st.columns(4)
+    test_df = query_table("""
+        SELECT 1 AS test_value
+    """)
 
-    with col1:
-        st.markdown(f"""
-        <div class="card">
-          <div class="metric-title">Top Favorite</div>
-          <div class="metric-value">{power_rankings.iloc[0]["team"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="card">
-          <div class="metric-title">Golden Boot Leader</div>
-          <div class="metric-value">{top_scorers.iloc[0]["player"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown(f"""
-        <div class="card">
-          <div class="metric-title">Most Used Stadium</div>
-          <div class="metric-value">{stadiums.iloc[0]["stadium_name"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown(f"""
-        <div class="card">
-          <div class="metric-title">Hardest Group</div>
-          <div class="metric-value">Group {groups.iloc[0]["group_name"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    if st.sidebar.button("Ask Copilot", use_container_width=True):
-        context = f"""
-POWER RANKINGS:
-{power_rankings.to_string(index=False)}
-
-TOP SCORERS:
-{top_scorers.to_string(index=False)}
-
-STADIUM MATCH LOAD:
-{stadiums.to_string(index=False)}
-
-GROUP DIFFICULTY:
-{groups.to_string(index=False)}
-"""
-
-        prompt = f"""
-You are a FIFA World Cup 2026 analytics assistant.
-
-Use ONLY the supplied data.
-Do not invent facts.
-If the answer cannot be determined from the context, say so clearly.
-
-CONTEXT:
-{context}
-
-QUESTION:
-{question}
-
-Answer clearly, analytically, and concisely.
-"""
-
-        with st.spinner("Analyzing World Cup data..."):
-            answer = ask_llm(prompt)
-
-        st.markdown("## Copilot Answer")
-        st.markdown(f"""
-        <div class="answer-box">
-        {answer}
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("## Tournament Intelligence")
-
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Power Rankings",
-        "Golden Boot",
-        "Stadiums",
-        "Groups"
-    ])
-
-    with tab1:
-        st.dataframe(power_rankings, use_container_width=True, hide_index=True)
-
-    with tab2:
-        st.dataframe(top_scorers, use_container_width=True, hide_index=True)
-
-    with tab3:
-        st.dataframe(stadiums, use_container_width=True, hide_index=True)
-
-    with tab4:
-        st.dataframe(groups, use_container_width=True, hide_index=True)
+    st.success("SQL connection works!")
+    st.dataframe(test_df)
 
 except Exception as e:
-    st.error("Something failed.")
+    st.error("SQL test failed.")
     st.code(str(e))
