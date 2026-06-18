@@ -2,18 +2,35 @@ const state = {
   data: null,
 };
 
-// ---------- Tabs ----------
-const tabButtons = document.querySelectorAll(".tab-btn");
+// ---------- Sidebar navigation ----------
+const sideNav = document.getElementById("side-nav");
+const sideNavIndicator = document.getElementById("side-nav-indicator");
+const sideNavButtons = document.querySelectorAll(".side-nav-btn");
 const tabPanels = document.querySelectorAll(".tab-panel");
+const headerTitle = document.getElementById("header-title");
 
-tabButtons.forEach((btn) => {
+function moveSideNavIndicator(btn) {
+  if (!btn) return;
+  sideNavIndicator.style.height = `${btn.offsetHeight}px`;
+  sideNavIndicator.style.transform = `translateY(${btn.offsetTop}px)`;
+}
+
+sideNavButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
-    tabButtons.forEach((b) => b.classList.remove("active"));
+    sideNavButtons.forEach((b) => b.classList.remove("active"));
     tabPanels.forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`panel-${btn.dataset.tab}`).classList.add("active");
+    headerTitle.textContent = btn.querySelector("span").textContent;
+    moveSideNavIndicator(btn);
   });
 });
+
+window.addEventListener("resize", () => {
+  moveSideNavIndicator(document.querySelector(".side-nav-btn.active"));
+});
+
+requestAnimationFrame(() => moveSideNavIndicator(document.querySelector(".side-nav-btn.active")));
 
 // ---------- Data loading ----------
 async function loadData() {
@@ -24,10 +41,32 @@ async function loadData() {
     state.data = json;
     renderMetrics();
     renderTables();
+    renderTicker();
   } catch (err) {
     document.getElementById("metric-grid").innerHTML = "";
+    document.getElementById("ticker-track").innerHTML = `<span class="ticker-item ticker-loading">Live intelligence unavailable right now</span>`;
     showError(err.message);
   }
+}
+
+// ---------- Live ticker ----------
+function renderTicker() {
+  const { power_rankings, top_scorers, group_difficulty, predictions } = state.data;
+  const topPick = [...predictions].sort((a, b) => b.confidence_score - a.confidence_score)[0];
+
+  const items = [
+    power_rankings[0] && `<span class="ticker-label">Top Favorite</span> <strong>${power_rankings[0].team}</strong>`,
+    top_scorers[0] && `<span class="ticker-label">Golden Boot</span> <strong>${top_scorers[0].player}</strong> (${top_scorers[0].goals})`,
+    group_difficulty[0] && `<span class="ticker-label">Toughest Group</span> <strong>Group ${group_difficulty[0].group_name}</strong>`,
+    topPick && `<span class="ticker-label">Highest Confidence</span> <strong>${topPick.home_team} vs ${topPick.away_team}</strong> — ${topPick.predicted_result}`,
+  ].filter(Boolean);
+
+  const track = document.getElementById("ticker-track");
+  const html = items
+    .map((item) => `<span class="ticker-item"><span class="ticker-dot"></span>${item}</span>`)
+    .join("");
+
+  track.innerHTML = html + html;
 }
 
 function showError(message) {
@@ -105,16 +144,45 @@ function renderTables() {
     ["strongest_team_score", "Strongest Team Score"],
   ]);
 
-  document.getElementById("table-predictions").innerHTML = buildTable(predictions, [
-    ["local_date", "Date"],
-    ["group_name", "Group"],
-    ["home_team", "Home"],
-    ["away_team", "Away"],
-    ["predicted_result", "Predicted Result"],
-    ["confidence_score", "Confidence"],
-    ["insight_type", "Insight"],
-    ["ai_match_analysis", "Analysis"],
-  ]);
+  document.getElementById("match-card-grid").innerHTML = buildMatchCards(predictions);
+}
+
+function confidenceTier(pct) {
+  if (pct >= 70) return "high";
+  if (pct >= 45) return "mid";
+  return "low";
+}
+
+function buildMatchCards(predictions) {
+  if (!predictions || !predictions.length) {
+    return `<p class="empty-state">No predictions available.</p>`;
+  }
+
+  return predictions
+    .map((p) => {
+      const pct = Math.round(p.confidence_score <= 1 ? p.confidence_score * 100 : p.confidence_score);
+      const tier = confidenceTier(pct);
+
+      return `
+        <div class="match-card">
+          <div class="match-meta">
+            <span>${p.local_date ?? ""}</span>
+            <span>Group ${p.group_name ?? "—"}</span>
+          </div>
+          <div class="match-teams">
+            <span class="match-team home">${p.home_team}</span>
+            <span class="match-result">${p.predicted_result}</span>
+            <span class="match-team away">${p.away_team}</span>
+          </div>
+          <div class="match-footer">
+            <span class="confidence-pill ${tier}">${pct}% confidence</span>
+            <span class="insight-tag">${p.insight_type ?? ""}</span>
+          </div>
+          <p class="match-analysis">${p.ai_match_analysis ?? ""}</p>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 // ---------- Team search ----------
@@ -267,8 +335,11 @@ function appendBubble(role, text, opts = {}) {
     : formatChatText(text);
 
   bubble.innerHTML = `
-    <div class="chat-bubble-label">${role === "user" ? "You" : "Copilot"}</div>
-    <div class="chat-bubble-text">${textHtml}</div>
+    <div class="chat-avatar">${role === "user" ? "You" : "AI"}</div>
+    <div class="chat-bubble-content">
+      <div class="chat-bubble-label">${role === "user" ? "You" : "Copilot"}</div>
+      <div class="chat-bubble-text">${textHtml}</div>
+    </div>
   `;
 
   chatMessages.appendChild(bubble);

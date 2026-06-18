@@ -13,99 +13,135 @@
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
+  <div class="ticker" id="ticker">
+    <div class="ticker-track" id="ticker-track">
+      <span class="ticker-item ticker-loading">Loading live tournament intelligence…</span>
+    </div>
+  </div>
+
   <div class="app-shell">
-    <header class="app-header">
-      <div class="brand">
-        <span class="brand-mark">⚽</span>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">26</div>
         <div class="brand-text">
           <h1>World Cup 2026</h1>
           <p>Intelligence Copilot</p>
         </div>
       </div>
 
-      <div class="search-wrap">
-        <input
-          id="team-search"
-          type="text"
-          placeholder="Search for a team — Brazil, USA, Argentina…"
-          autocomplete="off"
-        />
-        <div id="search-results" class="search-results hidden"></div>
-      </div>
-    </header>
+      <nav class="side-nav" id="side-nav">
+        <div class="side-nav-indicator" id="side-nav-indicator"></div>
+        <button class="side-nav-btn active" data-tab="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+          <span>Overview</span>
+        </button>
+        <button class="side-nav-btn" data-tab="rankings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="13"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="20" y1="20" x2="20" y2="3"/></svg>
+          <span>Power Rankings</span>
+        </button>
+        <button class="side-nav-btn" data-tab="scorers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M7 5H4a3 3 0 0 0 3 5"/><path d="M17 5h3a3 3 0 0 1-3 5"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+          <span>Golden Boot</span>
+        </button>
+        <button class="side-nav-btn" data-tab="stadiums">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>
+          <span>Stadiums</span>
+        </button>
+        <button class="side-nav-btn" data-tab="groups">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+          <span>Group Difficulty</span>
+        </button>
+        <button class="side-nav-btn" data-tab="predictions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+          <span>Predictions</span>
+        </button>
+        <button class="side-nav-btn" data-tab="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10H9l-4 4V5z"/></svg>
+          <span>AI Copilot</span>
+        </button>
+      </nav>
+    </aside>
 
-    <div id="team-spotlight" class="team-spotlight hidden"></div>
-
-    <nav class="tab-bar" id="tab-bar">
-      <button class="tab-btn active" data-tab="overview">Overview</button>
-      <button class="tab-btn" data-tab="rankings">Power Rankings</button>
-      <button class="tab-btn" data-tab="scorers">Golden Boot</button>
-      <button class="tab-btn" data-tab="stadiums">Stadiums</button>
-      <button class="tab-btn" data-tab="groups">Group Difficulty</button>
-      <button class="tab-btn" data-tab="predictions">Predictions</button>
-      <button class="tab-btn" data-tab="chat">AI Copilot</button>
-    </nav>
-
-    <main class="tab-panels" id="tab-panels">
-      <section class="tab-panel active" id="panel-overview">
-        <div class="hero">
-          <h2>World Cup 2026 Intelligence Copilot</h2>
-          <p>Built on the Databricks Lakehouse — gold tables, AI-driven match analysis, and Llama 3.3 70B.</p>
+    <div class="main-area">
+      <header class="app-header">
+        <h2 class="header-title" id="header-title">Overview</h2>
+        <div class="search-wrap">
+          <input
+            id="team-search"
+            type="text"
+            placeholder="Search for a team — Brazil, USA, Argentina…"
+            autocomplete="off"
+          />
+          <div id="search-results" class="search-results hidden"></div>
         </div>
-        <div class="metric-grid" id="metric-grid">
-          <div class="metric-loading">
-            <span class="spinner"></span>
-            Waking up the Databricks warehouse and AI models — first load can take a moment…
+      </header>
+
+      <div id="team-spotlight" class="team-spotlight hidden"></div>
+
+      <main class="tab-panels" id="tab-panels">
+        <section class="tab-panel active" id="panel-overview">
+          <div class="hero">
+            <h2>World Cup 2026 Intelligence Copilot</h2>
+            <p>Built on the Databricks Lakehouse — gold tables, AI-driven match analysis, and Llama 3.3 70B.</p>
           </div>
-        </div>
-      </section>
-
-      <section class="tab-panel" id="panel-rankings">
-        <h2>Power Rankings</h2>
-        <div class="table-wrap" id="table-rankings"></div>
-      </section>
-
-      <section class="tab-panel" id="panel-scorers">
-        <h2>Golden Boot Race</h2>
-        <div class="table-wrap" id="table-scorers"></div>
-      </section>
-
-      <section class="tab-panel" id="panel-stadiums">
-        <h2>Stadium Match Load</h2>
-        <div class="table-wrap" id="table-stadiums"></div>
-      </section>
-
-      <section class="tab-panel" id="panel-groups">
-        <h2>Group Difficulty</h2>
-        <div class="table-wrap" id="table-groups"></div>
-      </section>
-
-      <section class="tab-panel" id="panel-predictions">
-        <h2>Match Predictions</h2>
-        <div class="table-wrap" id="table-predictions"></div>
-      </section>
-
-      <section class="tab-panel" id="panel-chat">
-        <div class="chat-shell">
-          <div class="chat-messages" id="chat-messages">
-            <div class="chat-bubble ai">
-              <div class="chat-bubble-label">Copilot</div>
-              <div class="chat-bubble-text">
-                Ask me anything about the tournament — favorites, predictions, stadiums, or the toughest groups.
-              </div>
+          <div class="metric-grid" id="metric-grid">
+            <div class="metric-loading">
+              <span class="spinner"></span>
+              Waking up the Databricks warehouse and AI models — first load can take a moment…
             </div>
           </div>
-          <form class="chat-input-bar" id="chat-form">
-            <textarea
-              id="chat-input"
-              placeholder="Who are the favorites to win the World Cup and why?"
-              rows="1"
-            ></textarea>
-            <button type="submit" id="chat-send">Ask</button>
-          </form>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <section class="tab-panel" id="panel-rankings">
+          <h2>Power Rankings</h2>
+          <div class="table-wrap" id="table-rankings"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-scorers">
+          <h2>Golden Boot Race</h2>
+          <div class="table-wrap" id="table-scorers"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-stadiums">
+          <h2>Stadium Match Load</h2>
+          <div class="table-wrap" id="table-stadiums"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-groups">
+          <h2>Group Difficulty</h2>
+          <div class="table-wrap" id="table-groups"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-predictions">
+          <h2>Match Predictions</h2>
+          <div class="match-card-grid" id="match-card-grid"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-chat">
+          <div class="chat-shell">
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-bubble ai">
+                <div class="chat-avatar">AI</div>
+                <div class="chat-bubble-content">
+                  <div class="chat-bubble-label">Copilot</div>
+                  <div class="chat-bubble-text">
+                    Ask me anything about the tournament — favorites, predictions, stadiums, or the toughest groups.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <form class="chat-input-bar" id="chat-form">
+              <textarea
+                id="chat-input"
+                placeholder="Who are the favorites to win the World Cup and why?"
+                rows="1"
+              ></textarea>
+              <button type="submit" id="chat-send">Ask</button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <script src="/static/js/app.js"></script>
