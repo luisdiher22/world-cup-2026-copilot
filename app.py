@@ -2,7 +2,8 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
-
+from databricks import sql
+from databricks.sdk.core import Config, oauth_service_principal
 
 st.set_page_config(
     page_title="World Cup 2026 Intelligence",
@@ -81,14 +82,17 @@ question = st.sidebar.text_area(
     "Who are the favorites to win the World Cup?"
 )
 
+cfg = Config()
+
 def query_table(query):
-    workspace_url = os.getenv("DATABRICKS_HOST")
-    token = os.getenv("DATABRICKS_TOKEN")
-    warehouse_id = "fc03329efedbeaa3"
-    
-    if not workspace_url.startswith("http"):
-        workspace_url = "https://" + workspace_url
-    
+    with sql.connect(
+        server_hostname=cfg.host.replace("https://", ""),
+        http_path="/sql/1.0/warehouses/fc03329efedbeaa3",
+        credentials_provider=lambda: oauth_service_principal(cfg)
+    ) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            return cursor.fetchall_arrow().to_pandas()
 
     response = requests.post(
         f"{workspace_url}/api/2.0/sql/statements",
