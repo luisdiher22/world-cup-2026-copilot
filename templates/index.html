@@ -39,9 +39,21 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="13"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="20" y1="20" x2="20" y2="3"/></svg>
           <span>Power Rankings</span>
         </button>
+        <button class="side-nav-btn" data-tab="standings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="14" y2="18"/></svg>
+          <span>Standings</span>
+        </button>
         <button class="side-nav-btn" data-tab="scorers">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M7 5H4a3 3 0 0 0 3 5"/><path d="M17 5h3a3 3 0 0 1-3 5"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
           <span>Golden Boot</span>
+        </button>
+        <button class="side-nav-btn" data-tab="schedule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          <span>Schedule</span>
+        </button>
+        <button class="side-nav-btn" data-tab="bracket">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="5" x2="4" y2="19"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="17" x2="9" y2="17"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="9" y1="12" x2="14" y2="12"/><line x1="14" y1="7" x2="14" y2="17"/><line x1="14" y1="7" x2="20" y2="7"/><line x1="14" y1="17" x2="20" y2="17"/></svg>
+          <span>Bracket</span>
         </button>
         <button class="side-nav-btn" data-tab="stadiums">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>
@@ -97,9 +109,30 @@
           <div class="table-wrap" id="table-rankings"></div>
         </section>
 
+        <section class="tab-panel" id="panel-standings">
+          <h2>Group Standings</h2>
+          <div class="standings-grid" id="standings-grid"></div>
+        </section>
+
         <section class="tab-panel" id="panel-scorers">
           <h2>Golden Boot Race</h2>
           <div class="table-wrap" id="table-scorers"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-schedule">
+          <h2>Match Schedule</h2>
+          <div class="schedule-filters" id="schedule-filters"></div>
+          <div class="schedule-list" id="schedule-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-bracket">
+          <h2>Knockout Bracket</h2>
+          <p class="bracket-note">
+            Projected from current group standings and team strength ratings. FIFA only finalizes official
+            Round of 32 slot assignments for third-placed teams after all group matches conclude — rounds
+            beyond the Round of 32 are simulated, not official.
+          </p>
+          <div class="bracket" id="bracket"></div>
         </section>
 
         <section class="tab-panel" id="panel-stadiums">
@@ -142,6 +175,10 @@
         </section>
       </main>
     </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="match-modal-overlay">
+    <div class="modal-card" id="match-modal-card"></div>
   </div>
 
   <script src="/static/js/app.js"></script>

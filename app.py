@@ -162,6 +162,49 @@ def load_tables():
         ORDER BY confidence_score DESC
         
     """)
+    match_details = query_table("""
+    SELECT
+      match_id,
+      local_date,
+      group_name,
+      matchday,
+      home_team,
+      away_team,
+      home_score,
+      away_score,
+      match_status,
+      time_elapsed,
+      home_scorers,
+      away_scorers,
+      stadium_name,
+      city,
+      country
+    FROM gold_match_details
+    ORDER BY local_date
+    """)
+
+    team_match_history = query_table("""
+    SELECT
+      match_id,
+      local_date,
+      group_name,
+      matchday,
+      team,
+      opponent,
+      is_home,
+      team_score,
+      opponent_score,
+      result,
+      team_scorers,
+      opponent_scorers,
+      match_status,
+      time_elapsed,
+      stadium_name,
+      city,
+      country
+    FROM gold_team_match_history
+    ORDER BY team, local_date
+""")
 
     return {
         "power_rankings": power_rankings,
@@ -169,6 +212,8 @@ def load_tables():
         "stadiums": stadiums,
         "group_difficulty": group_difficulty,
         "predictions": predictions,
+        "match_details": match_details,
+        "team_match_history": team_match_history,
     }
 
 
@@ -197,7 +242,14 @@ GROUP DIFFICULTY:
 
 MATCH PREDICTIONS:
 {tables["predictions"].to_string(index=False)}
+
+MATCH DETAILS:
+{tables["match_details"].to_string(index=False)}
+
+TEAM MATCH HISTORY:
+{tables["team_match_history"].to_string(index=False)}
 """
+
 
     return f"""
 You are a FIFA World Cup 2026 analytics assistant.
