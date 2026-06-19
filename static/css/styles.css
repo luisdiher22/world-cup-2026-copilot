@@ -576,6 +576,14 @@ h1, h2, h3 {
   margin-bottom: 16px;
 }
 
+.section-caption {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 680px;
+  margin: -8px 0 18px;
+}
+
 /* ---------- Hero / Overview ---------- */
 .hero {
   padding: 40px 36px;
@@ -1195,6 +1203,25 @@ tbody tr:hover {
   margin-bottom: 20px;
 }
 
+.modal-prediction {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.modal-prediction-text {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 .modal-venue {
   display: flex;
   flex-direction: column;
@@ -1515,47 +1542,99 @@ tbody tr:hover {
   transform: none;
 }
 
+/* ---------- Mobile menu toggle ---------- */
+.menu-toggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.menu-toggle svg {
+  width: 19px;
+  height: 19px;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
+  .menu-toggle {
+    display: flex;
+  }
+
   .app-shell {
     flex-direction: column;
   }
 
   .sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    padding: 12px 14px;
-    gap: 16px;
+    position: fixed;
+    top: var(--ticker-height);
+    left: 0;
+    width: 270px;
+    height: calc(100vh - var(--ticker-height));
+    transform: translateX(-100%);
+    transition: transform 0.3s var(--ease-out);
+    z-index: 70;
+    box-shadow: var(--shadow-lg);
   }
 
-  .sidebar-brand {
-    display: none;
+  .sidebar.open {
+    transform: translateX(0);
   }
 
-  .side-nav {
-    flex-direction: row;
-    gap: 6px;
+  .sidebar-overlay {
+    position: fixed;
+    inset: var(--ticker-height) 0 0 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 65;
   }
 
-  .side-nav-indicator {
-    display: none;
-  }
-
-  .side-nav-btn.active {
-    background: var(--bg-elevated);
+  .sidebar-overlay.open {
+    display: block;
   }
 
   .main-area {
-    padding: 22px 18px 60px;
+    padding: 20px 16px 60px;
+  }
+
+  .header-title {
+    font-size: 17px;
   }
 }
 
 @media (max-width: 560px) {
   .chat-bubble {
     max-width: 92%;
+  }
+
+  .search-wrap {
+    max-width: none;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .schedule-status {
+    text-align: left;
+  }
+
+  .modal-card {
+    padding: 22px 18px;
+  }
+
+  .modal-team {
+    font-size: 14px;
   }
 }

@@ -23,6 +23,7 @@ sideNavButtons.forEach((btn) => {
     document.getElementById(`panel-${btn.dataset.tab}`).classList.add("active");
     headerTitle.textContent = btn.querySelector("span").textContent;
     moveSideNavIndicator(btn);
+    closeMobileMenu();
   });
 });
 
@@ -32,15 +33,40 @@ window.addEventListener("resize", () => {
 
 requestAnimationFrame(() => moveSideNavIndicator(document.querySelector(".side-nav-btn.active")));
 
+// ---------- Mobile menu drawer ----------
+const menuToggle = document.getElementById("menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+function closeMobileMenu() {
+  sidebarEl.classList.remove("open");
+  sidebarOverlay.classList.remove("open");
+}
+
+menuToggle.addEventListener("click", () => {
+  sidebarEl.classList.toggle("open");
+  sidebarOverlay.classList.toggle("open");
+});
+
+sidebarOverlay.addEventListener("click", closeMobileMenu);
+
 // ---------- Data loading ----------
 async function loadData() {
   try {
     const res = await fetch("/api/data");
     const json = await res.json();
     if (json.error) throw new Error(json.error);
+    // gold_ai_match_analysis includes placeholder rows for not-yet-determined
+    // knockout matches (null teams, "Draw", 0 confidence) — drop them so they
+    // don't pollute the predictions tab, confidence tiers, or match lookups.
+    json.predictions = (json.predictions ?? []).filter((p) => p.home_team && p.away_team);
     state.data = json;
     state.tiers = buildTiers(json);
     state.standings = computeStandings(json.match_details ?? []);
+    state.teamsByName = {};
+    json.power_rankings.forEach((r) => {
+      state.teamsByName[r.team] = r;
+    });
     renderMetrics();
     renderTables();
     renderTicker();
@@ -216,6 +242,87 @@ function matchOutcome(p) {
   return { text: p.predicted_result ?? "", side: null };
 }
 
+// ---------- Match narrative ----------
+// The upstream ai_match_analysis column is a flat template ("X has a team
+// strength score of Y...") that reads the same for every match. We write our
+// own narrative client-side instead, pulling in world rank gap, insight_type,
+// and group difficulty so the wording actually varies with the matchup.
+const NARRATIVE_TEMPLATES = {
+  home: {
+    "Strong favorite": [
+      (h, a, gap) => `${h} go in as clear favorites over ${a}, backed by a ${gap}-place world ranking gap — this looks like a routine result on paper.`,
+      (h, a) => `${h} should have too much for ${a} here; the gulf in class points to a comfortable home win.`,
+    ],
+    "Moderate favorite": [
+      (h, a) => `${h} carry the edge at home against ${a}, though there's enough quality on both sides to keep this interesting.`,
+      (h, a) => `Expect ${h} to nose ahead of ${a}, but nothing here is a foregone conclusion.`,
+    ],
+    "Close match": [
+      (h, a) => `${h} get the slightest of nods at home, but this one against ${a} is shaping up tight.`,
+      (h, a) => `Wafer-thin margins separate ${h} and ${a} — home advantage may be the deciding factor.`,
+    ],
+  },
+  away: {
+    "Strong favorite": [
+      (h, a, gap) => `${a} travel with a big edge, ${gap} places clear of ${h} in the world rankings — a routine away win looks likely.`,
+      (h, a) => `${a} should deal comfortably with ${h} on the road; the gap in quality is significant.`,
+    ],
+    "Moderate favorite": [
+      (h, a) => `${a} carry the edge into this away trip against ${h}, though it's far from a sure thing.`,
+      (h, a) => `Expect ${a} to edge it on the road, but ${h} will fancy their chances of a shock result.`,
+    ],
+    "Close match": [
+      (h, a) => `${a} are given a slight nod away from home, but ${h} could easily turn this one around.`,
+      (h, a) => `Razor-thin gap here — ${a} travel with a marginal edge over ${h}.`,
+    ],
+  },
+  draw: [
+    (h, a) => `${h} and ${a} look evenly matched on paper — this one could easily finish level.`,
+    (h, a) => `Little to separate ${h} and ${a}; don't be surprised if this ends in a draw.`,
+  ],
+};
+
+function pickTemplate(list, seedKey) {
+  let hash = 0;
+  for (let i = 0; i < seedKey.length; i++) hash = (hash * 31 + seedKey.charCodeAt(i)) >>> 0;
+  return list[hash % list.length];
+}
+
+function buildMatchNarrative(p) {
+  const outcome = matchOutcome(p);
+  const home = state.teamsByName?.[p.home_team];
+  const away = state.teamsByName?.[p.away_team];
+  const rankGap = home && away ? Math.abs(toNum(home.world_rank) - toNum(away.world_rank)) : null;
+
+  const seedKey = `${p.home_team}|${p.away_team}|${p.local_date}`;
+  let sentence;
+
+  if (outcome.side === null) {
+    sentence = pickTemplate(NARRATIVE_TEMPLATES.draw, seedKey)(p.home_team, p.away_team);
+  } else {
+    const bucket = NARRATIVE_TEMPLATES[outcome.side][p.insight_type] ?? NARRATIVE_TEMPLATES[outcome.side]["Close match"];
+    sentence = pickTemplate(bucket, seedKey)(p.home_team, p.away_team, rankGap);
+  }
+
+  // group_difficulty is pre-sorted hardest-first; only call out the genuinely
+  // toughest few groups so the clause stays meaningful instead of showing up everywhere
+  const groupRank = state.data.group_difficulty.findIndex((g) => g.group_name === p.group_name);
+  const GROUP_CLAUSES = [
+    (g) => ` Both sides also have to survive a brutal Group ${g}.`,
+    (g) => ` It's also one of the toughest groups in the draw, Group ${g}.`,
+  ];
+  const groupClause = groupRank >= 0 && groupRank < 3 ? pickTemplate(GROUP_CLAUSES, seedKey)(p.group_name) : "";
+
+  const confidenceTier = state.tiers.confidence(p.confidence_score);
+  const CONFIDENCE_CLOSERS = [
+    (t) => ` Model confidence: ${t}.`,
+    (t) => ` (${t} pick.)`,
+  ];
+  const confidenceClause = pickTemplate(CONFIDENCE_CLOSERS, seedKey + "c")(confidenceTier);
+
+  return `${sentence}${groupClause}${confidenceClause}`;
+}
+
 // ---------- Live ticker ----------
 function renderTicker() {
   const { power_rankings, top_scorers, group_difficulty, predictions } = state.data;
@@ -353,6 +460,39 @@ function openMatchModal(matchId) {
     ...parseScorers(match.away_scorers).map((g) => ({ ...g, side: "away" })),
   ].sort((a, b) => parseInt(a.minute, 10) - parseInt(b.minute, 10));
 
+  const prediction = !finished
+    ? (state.data.predictions ?? []).find((p) => p.home_team === match.home_team && p.away_team === match.away_team)
+    : null;
+
+  let middleSection;
+  if (timeline.length) {
+    middleSection = `<div class="modal-timeline">
+      ${timeline
+        .map(
+          (g) => `
+            <div class="timeline-row ${g.side}">
+              <span class="timeline-minute">${g.minute}'</span>
+              <span class="timeline-name">${g.name}</span>
+            </div>
+          `
+        )
+        .join("")}
+     </div>`;
+  } else if (finished) {
+    middleSection = `<p class="modal-empty">No goals scored.</p>`;
+  } else if (prediction) {
+    const tierLabel = state.tiers.confidence(prediction.confidence_score);
+    middleSection = `
+      <div class="modal-prediction">
+        <span class="stat-label">AI Prediction</span>
+        <p class="modal-prediction-text">${buildMatchNarrative(prediction)}</p>
+        <span class="confidence-pill ${CONFIDENCE_CLASS[tierLabel]}">${tierLabel}</span>
+      </div>
+    `;
+  } else {
+    middleSection = `<p class="modal-empty">Match hasn't kicked off yet — no prediction available.</p>`;
+  }
+
   document.getElementById("match-modal-card").innerHTML = `
     <button class="modal-close" id="match-modal-close" aria-label="Close">&times;</button>
     <div class="modal-stage">${groupLabel(match.group_name)} · ${formatMatchDate(match.local_date)}</div>
@@ -361,22 +501,7 @@ function openMatchModal(matchId) {
       <span class="modal-score">${finished ? `${match.home_score} – ${match.away_score}` : "vs"}</span>
       <span class="modal-team">${match.away_team ?? "TBD"}</span>
     </div>
-    ${
-      timeline.length
-        ? `<div class="modal-timeline">
-            ${timeline
-              .map(
-                (g) => `
-                  <div class="timeline-row ${g.side}">
-                    <span class="timeline-minute">${g.minute}'</span>
-                    <span class="timeline-name">${g.name}</span>
-                  </div>
-                `
-              )
-              .join("")}
-           </div>`
-        : `<p class="modal-empty">${finished ? "No goals scored." : "Match hasn't kicked off yet."}</p>`
-    }
+    ${middleSection}
     <div class="modal-venue">
       <span class="stat-label">Stadium</span>
       <span class="stat-value">${match.stadium_name ?? "—"}</span>
@@ -453,14 +578,12 @@ function buildTable(rows, columns) {
 
 function renderTables() {
   const { power_rankings, top_scorers, stadiums, group_difficulty, predictions } = state.data;
-  const { strength, groupDifficulty, groupTopTeam } = state.tiers;
+  const { groupDifficulty, groupTopTeam } = state.tiers;
 
   document.getElementById("table-rankings").innerHTML = buildTable(power_rankings, [
     ["world_rank", "Rank"],
     ["team", "Team"],
     ["group_name", "Group"],
-    ["team_strength", "Strength", strength],
-    ["title_contender_tier", "Tier"],
   ]);
 
   document.getElementById("table-scorers").innerHTML = buildTable(top_scorers, [
@@ -513,7 +636,7 @@ function buildMatchCards(predictions) {
             <span class="confidence-pill ${CONFIDENCE_CLASS[tierLabel]}">${tierLabel}</span>
             <span class="insight-tag">${p.insight_type ?? ""}</span>
           </div>
-          <p class="match-analysis">${p.ai_match_analysis ?? ""}</p>
+          <p class="match-analysis">${buildMatchNarrative(p)}</p>
         </div>
       `;
     })

@@ -74,8 +74,13 @@
       </nav>
     </aside>
 
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
     <div class="main-area">
       <header class="app-header">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
         <h2 class="header-title" id="header-title">Overview</h2>
         <div class="search-wrap">
           <input
@@ -106,6 +111,11 @@
 
         <section class="tab-panel" id="panel-rankings">
           <h2>Power Rankings</h2>
+          <p class="section-caption">
+            Teams are ordered by a composite power rating built from current form, historical results, and squad
+            strength — the higher a team ranks, the more likely our model thinks they are to go deep in the
+            tournament.
+          </p>
           <div class="table-wrap" id="table-rankings"></div>
         </section>
 
