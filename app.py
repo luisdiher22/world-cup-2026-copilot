@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import time
 import threading
 
@@ -276,7 +277,10 @@ def get_data():
         return JSONResponse({"error": str(e)}, status_code=500)
 
     return {
-        key: df.to_dict(orient="records")
+        key: [
+            {k: (None if isinstance(v, float) and not math.isfinite(v) else v) for k, v in row.items()}
+            for row in df.to_dict(orient="records")
+        ]
         for key, df in tables.items()
     }
 
